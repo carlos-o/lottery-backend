@@ -31,6 +31,12 @@ SECRET_KEY = 'django-insecure-*^eh+#9buu-o-a#l4%ww7$^o+#v-0a%s8ae$(=tzes=$)rp+3f
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if env('DEBUG') == 'true' else False
 
+URL = env('URL')
+
+PAGE_SIZE = env('PAGE_SIZE')
+
+FRONT_URL = env('FRONT_URL')
+
 ALLOWED_HOSTS = []
 
 # Application definition
@@ -55,7 +61,9 @@ DJANGO_APPS = [
 ]
 
 LOCAL_APPS = [
-
+	'accounts',
+	'lottery',
+	'utils'
 ]
 
 THIRD_PARTY_APPS = [
@@ -145,6 +153,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_USE_TLS = True if env('EMAIL_TLS') == 'True' else False
+EMAIL_USE_SSL = True if env('EMAIL_SSL') == 'True' else False
+EMAIL_HOST = env('EMAIL_HOST')
+EMAIL_HOST_USER = env('EMAIL_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_PASSWORD')
+EMAIL_PORT = env('EMAIL_PORT_USE')
+
 STATIC_URL = '/static/'
 
 # Default primary key field type
@@ -163,8 +180,8 @@ REST_FRAMEWORK = {
 	#    'rest_framework.permissions.IsAuthenticated',
 	# ),
 	# 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-	# 'PAGE_SIZE': 20,
-	# 'DEFAULT_PAGINATION_CLASS': 'utilswb.paginations.CustomPagination',
+	'PAGE_SIZE': PAGE_SIZE,
+	'DEFAULT_PAGINATION_CLASS': 'utils.pagination.CustomPagination',
 	'PAGINATE_BY_PARAM': 'page_size',
 	'DATETIME_FORMAT': "%Y-%m-%d %H:%M:%S",
 }
@@ -203,7 +220,7 @@ CORS_ALLOW_METHODS = (
 )
 
 # Log configuration
-log_path = os.path.dirname(BASE_DIR)
+log_path = os.path.join(BASE_DIR)
 LOG_FOLDER = os.path.join(log_path, 'logs')
 LOG_FILE_INFO = LOG_FOLDER + '/' + 'info.log'
 LOG_FILE_ERRORS = LOG_FOLDER + '/' + 'errors.log'
@@ -284,3 +301,10 @@ logging.config.dictConfig({
 		'django.server': DEFAULT_LOGGING['loggers']['django.server'],
 	}
 })
+
+
+CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
+
+
+AUTH_USER_MODEL = "accounts.User"
