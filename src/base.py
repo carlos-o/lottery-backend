@@ -55,7 +55,7 @@ DJANGO_APPS = [
 ]
 
 LOCAL_APPS = [
-
+	'accounts'
 ]
 
 THIRD_PARTY_APPS = [
@@ -203,7 +203,7 @@ CORS_ALLOW_METHODS = (
 )
 
 # Log configuration
-log_path = os.path.dirname(BASE_DIR)
+log_path = os.path.join(BASE_DIR)
 LOG_FOLDER = os.path.join(log_path, 'logs')
 LOG_FILE_INFO = LOG_FOLDER + '/' + 'info.log'
 LOG_FILE_ERRORS = LOG_FOLDER + '/' + 'errors.log'
@@ -284,3 +284,10 @@ logging.config.dictConfig({
 		'django.server': DEFAULT_LOGGING['loggers']['django.server'],
 	}
 })
+
+
+CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
+
+
+AUTH_USER_MODEL = "accounts.User"
