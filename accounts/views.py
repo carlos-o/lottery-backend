@@ -54,23 +54,66 @@ class LogoutView(APIView):
 
 	def post(self, request):
 		logger.info("Logout from the API")
-		print(request.user)
 		try:
 			accounts_services.logout(user=request.user)
 		except ValueError as e:
-			return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+			logger.error("ValueError: %s" % str(e), exc_info=True)
+			return Response({'detail': ResponseDetail().errors_detail(code=400, message="ValueError", error=str(e))},
+							status=status.HTTP_400_BAD_REQUEST)
 		except PermissionDenied as e:
-			return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
+			logger.error("PermissionError: %s" % str(e), exc_info=True)
+			return Response(
+				{"detail": ResponseDetail().errors_detail(code=401, message="PermissionError", error=str(e))},
+				status=status.HTTP_401_UNAUTHORIZED)
 		except Exception as e:
-			return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+			logger.error("Exception: INTERNAL SERVER ERROR %s" % str(e), exc_info=True)
+			return Response({"detail": ResponseDetail().errors_detail(error={"error": [str(e)]})},
+							status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 		return Response({"detail": ResponseDetail().success_detail()}, status=status.HTTP_200_OK)
 
 
 class RegisterUserView(APIView):
 	permission_classes = (permissions.AllowAny,)
 
-	def post(self):
-		return Response({})
+	def post(self, request):
+		logger.info("Register a user in lottery")
+		try:
+			user = accounts_services.register(request.data)
+		except ValueError as e:
+			logger.error("ValueError: %s" % str(e), exc_info=True)
+			return Response(
+				{'detail': ResponseDetail().errors_detail(code=400, message="ValueError", error=str(e))},
+				status=status.HTTP_400_BAD_REQUEST)
+		except Exception as e:
+			logger.error("Exception: INTERNAL SERVER ERROR %s" % str(e), exc_info=True)
+			return Response({
+				"detail": ResponseDetail().errors_detail(error={"error": [str(e)]})}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+		serializer = accounts_serializers.UserSerializer(user, many=False).data
+		message = "please verify your account"
+		accounts_tasks.send_verify_account_notification.delay(user.email, user.activation)
+		return Response({"detail": ResponseDetail().success_detail(data=serializer, message=message)}, status=status.HTTP_200_OK)
 
-	def get(self):
-		return Response({})
+
+class ActivateAccountView(APIView):
+
+	permission_classes = (permissions.AllowAny,)
+
+	def post(self, request):
+		logger.info("Activate account and generate password")
+		try:
+			user = accounts_services.activate_account(request.data)
+		except ValueError as e:
+			logger.error("ValueError: %s" % str(e), exc_info=True)
+			return Response(
+				{'detail': ResponseDetail().errors_detail(code=400, message="ValueError", error=str(e))},
+				status=status.HTTP_400_BAD_REQUEST)
+		except Exception as e:
+			logger.error("Exception: INTERNAL SERVER ERROR %s" % str(e), exc_info=True)
+			return Response({
+				"detail": ResponseDetail().errors_detail(error={"error": [str(e)]})},
+				status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+		serializer = accounts_serializers.UserSerializer(user, many=False).data
+		token, created = Token.objects.get_or_create(user=user)
+		serializer['token'] = token.key
+		message = "Your account all ready activate"
+		return Response({"detail": ResponseDetail().success_detail(data=serializer, message=message)}, status=status.HTTP_200_OK)

@@ -21,8 +21,7 @@ class ResponseDetail:
         if error:
             if type(error) is str:
                 try:
-                    error = error.replace("'", " ")
-                    print(error)
+                    error = error.replace("'", '"')
                     error = json.loads(error)
                 except json.decoder.JSONDecodeError:
                     pass

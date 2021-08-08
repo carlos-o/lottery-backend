@@ -1,9 +1,12 @@
 from accounts.models import User
 from django.db.models import Q
 from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import make_password
 from django.core.exceptions import PermissionDenied
 from datetime import datetime
 from utils.permissions import is_active_user
+from utils import services as utils_services
+from accounts import validations as accounts_validations
 import logging
 
 # Standard instance of a logger with __name__
@@ -67,3 +70,64 @@ def logout(user: User) -> bool:
     user.auth_token.delete()
     logger.debug("OPEN: %s has been logout to app correctly" % user.username)
     return True
+
+
+def register(data: dict):
+    """
+        register a user
+
+        :param data: user information
+        :return: user
+        :raises: ValueError.
+    """
+    logger.debug("register User")
+    email = data.get('email', None)
+    if email is None or not email:
+        logger.error("OPEN:Error, email is empty")
+        raise ValueError("The email field can not be empty")
+    accounts_validations.validate_email_exists(data.get('email'))
+    validator = accounts_validations.ValidatorRegisterUser(data)
+    if validator.validation() is False:
+        errors = validator.mistakes()
+        for value in errors:
+            errors[value] = validator.change_value(errors[value])
+        logging.error("ERROR: in information of user %s" % str(errors), exc_info=True)
+        raise ValueError(errors)
+    try:
+        user = User.objects.create(
+            username=utils_services.create_username(data.get('first_name'), data.get('last_name')),
+            first_name=data.get('first_name'),
+            last_name=data.get('last_name'),
+            email=email,
+            phone=data.get('phone'),
+            address=data.get('address'),
+            rut=data.get('rut'),
+            gender=data.get('gender'),
+            activation=utils_services.code_generator(15),
+            password=make_password(utils_services.code_generator(8)),
+            is_active=False,
+        )
+    except Exception as e:
+        logging.error("ERROR: to stored user %s" % str(e), exc_info=True)
+        raise ValueError("An error occurred while saving the user")
+    return user
+
+
+def activate_account(data: dict):
+    """
+        activate and add password in user account
+
+        :param data: user information
+        :type data: dict
+        :return: user
+        :raises: ValueError
+    """
+    user = User.objects.filter(activation=data.get('code')).first()
+    if user is not None:
+        user.password = make_password(data.get('password'))
+        user.is_active = True
+        user.activation = None
+        user.save()
+    else:
+        raise ValueError("This code does not belong to you, please contact administrator")
+    return user
